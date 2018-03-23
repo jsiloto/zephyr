@@ -28,9 +28,9 @@
 #define CONNECT_TIME	K_SECONDS(10)
 
 #define CLIENT_MANUFACTURER	"Zephyr"
-#define CLIENT_MODEL_NUMBER	"OMA-LWM2M Sample Client"
-#define CLIENT_SERIAL_NUMBER	"345000123"
-#define CLIENT_FIRMWARE_VER	"1.0"
+#define CLIENT_MODEL_NUMBER	"ExampleFW"
+#define CLIENT_SERIAL_NUMBER	"123456789"
+#define CLIENT_FIRMWARE_VER	"1.0.0"
 #define CLIENT_DEVICE_TYPE	"OMA-LWM2M Client"
 #define CLIENT_HW_VER		"1.0.1"
 
@@ -209,8 +209,11 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 				      u8_t *data, u16_t data_len,
 				      bool last_block, size_t total_size)
 {
-	SYS_LOG_INF("FIRMWARE: BLOCK RECEIVED: len:%u last_block:%d",
-		    data_len, last_block);
+	// SYS_LOG_INF("FIRMWARE: BLOCK RECEIVED: len:%u last_block:%d", data_len, last_block);
+	printk("\n");
+	for(int i = 0; i < data_len; i++){
+		printk("%c", data[i]);
+	}
 	return 0;
 }
 #endif

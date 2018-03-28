@@ -53,6 +53,9 @@ static int usb_current = 900;
 
 static struct device *led_dev;
 static u32_t led_state;
+static u32_t led_on_time = 0;
+static float cumulative_power = 0;
+static int dimmer = 100;
 
 static struct lwm2m_ctx client;
 
@@ -118,46 +121,15 @@ static int led_on_off_cb(u16_t obj_inst_id, u8_t *data, u16_t data_len,
 
 	led_val = *(u8_t *) data;
 	if (led_val != led_state) {
-		ret = gpio_pin_write(led_dev, LED_GPIO_PIN, led_val);
-		if (ret) {
-			/*
-			 * We need an extra hook in LWM2M to better handle
-			 * failures before writing the data value and not in
-			 * post_write_cb, as there is not much that can be
-			 * done here.
-			 */
-			SYS_LOG_ERR("Fail to write to GPIO %d", LED_GPIO_PIN);
-			return ret;
-		}
+
 
 		led_state = led_val;
 		/* TODO: Move to be set by an internal post write function */
-		lwm2m_engine_set_s32("3311/0/5852", 0);
+		led_on_time = 0;
+		cumulative_power = 0;
 	}
 
 	return ret;
-}
-
-static int init_led_device(void)
-{
-	int ret;
-
-	led_dev = device_get_binding(LED_GPIO_PORT);
-	if (!led_dev) {
-		return -ENODEV;
-	}
-
-	ret = gpio_pin_configure(led_dev, LED_GPIO_PIN, GPIO_DIR_OUT);
-	if (ret) {
-		return ret;
-	}
-
-	ret = gpio_pin_write(led_dev, LED_GPIO_PIN, 0);
-	if (ret) {
-		return ret;
-	}
-
-	return 0;
 }
 
 static int device_reboot_cb(u16_t obj_inst_id)
@@ -278,11 +250,9 @@ static int lwm2m_setup(void)
 	lwm2m_engine_set_float32("3303/0/5700", &float_value);
 
 	/* IPSO: Light Control object */
-	if (init_led_device() == 0) {
-		lwm2m_engine_create_obj_inst("3311/0");
-		lwm2m_engine_register_post_write_callback("3311/0/5850",
-				led_on_off_cb);
-	}
+	lwm2m_engine_create_obj_inst("3311/0");
+	lwm2m_engine_register_post_write_callback("3311/0/5850", led_on_off_cb);
+
 
 	return 0;
 }
@@ -368,11 +338,11 @@ void main(void)
 
 #if defined(CONFIG_NET_IPV6)
 	ret = lwm2m_rd_client_start(&client, CONFIG_NET_APP_PEER_IPV6_ADDR,
-				    CONFIG_LWM2M_PEER_PORT, CONFIG_BOARD,
+				    CONFIG_LWM2M_PEER_PORT, "CONFIG_BOARD",
 				    rd_client_event);
 #elif defined(CONFIG_NET_IPV4)
 	ret = lwm2m_rd_client_start(&client, CONFIG_NET_APP_PEER_IPV4_ADDR,
-				    CONFIG_LWM2M_PEER_PORT, CONFIG_BOARD,
+				    CONFIG_LWM2M_PEER_PORT, "CONFIG_BOARD",
 				    rd_client_event);
 #else
 	SYS_LOG_ERR("LwM2M client requires IPv4 or IPv6.");
@@ -383,6 +353,42 @@ void main(void)
 			ret);
 		return;
 	}
+
+
+	// Main Application Loop
+	while(1){
+		struct float32_value temp_value;
+		struct float32_value cumulative;
+		if(led_state){
+			// Set temperature
+			temp_value.val1 = 30;
+			temp_value.val2 = 0;
+			
+			//	update on time
+			led_on_time++;
+
+			// update cumulative active power based on dimmer
+			// 10W lamp
+			float elapsed_power = 10*dimmer/3600;
+			cumulative_power += elapsed_power;
+		}
+		else {
+			temp_value.val1 = 25;
+			temp_value.val2 = 0;
+			cumulative_power = 0;
+			led_on_time = 0;
+		}
+
+		lwm2m_engine_set_float32("3303/0/5700", &temp_value);
+		lwm2m_engine_set_s32("3311/0/5852", led_on_time);
+		cumulative.val1 = cumulative_power;
+		cumulative.val2 = (cumulative_power - (int)(cumulative_power))*1000000;
+		lwm2m_engine_set_float32("3311/0/5805", &cumulative);
+
+
+		k_sleep(1000);
+	}
+
 
 	k_sem_take(&quit_lock, K_FOREVER);
 }

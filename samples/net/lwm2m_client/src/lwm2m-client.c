@@ -52,7 +52,7 @@ static int usb_voltage = 5000;
 static int usb_current = 900;
 
 static struct device *led_dev;
-static u32_t led_state;
+static u32_t led_state = 1;
 static u32_t led_on_time = 0;
 static float cumulative_power = 0;
 static int dimmer = 100;
@@ -369,7 +369,7 @@ void main(void)
 
 			// update cumulative active power based on dimmer
 			// 10W lamp
-			float elapsed_power = 10*dimmer/3600;
+			float elapsed_power = ((float)10*dimmer)/3600.0;
 			cumulative_power += elapsed_power;
 		}
 		else {
@@ -382,7 +382,7 @@ void main(void)
 		lwm2m_engine_set_float32("3303/0/5700", &temp_value);
 		lwm2m_engine_set_s32("3311/0/5852", led_on_time);
 		cumulative.val1 = cumulative_power;
-		cumulative.val2 = (cumulative_power - (int)(cumulative_power))*1000000;
+		cumulative.val2 = 50000;
 		lwm2m_engine_set_float32("3311/0/5805", &cumulative);
 
 

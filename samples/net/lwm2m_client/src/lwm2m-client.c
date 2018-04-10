@@ -118,11 +118,10 @@ static int led_on_off_cb(u16_t obj_inst_id, u8_t *data, u16_t data_len,
 {
 	int ret = 0;
 	u32_t led_val;
-
+	SYS_LOG_DBG("\n\n\nCurrent LED state: %s\n\n", led_state ? "ON" : "OFF");
 	led_val = *(u8_t *) data;
 	if (led_val != led_state) {
-
-
+		SYS_LOG_DBG("\n\nSwitching let to LED to: %s\n\n", led_val? "ON" : "OFF");
 		led_state = led_val;
 		/* TODO: Move to be set by an internal post write function */
 		led_on_time = 0;
@@ -131,6 +130,26 @@ static int led_on_off_cb(u16_t obj_inst_id, u8_t *data, u16_t data_len,
 
 	return ret;
 }
+
+
+static int set_dimmer_cb(u16_t obj_inst_id, u8_t *data, u16_t data_len,
+			 bool last_block, size_t total_size)
+{
+	int ret = 0;
+	u32_t dimmer_val;
+	dimmer_val = *(u8_t *) data;
+	dimmer = dimmer_val;
+	if(dimmer > 100){
+		dimmer = 100;
+	}
+	if (dimmer < 0){
+		dimmer = 0;
+	}
+	SYS_LOG_DBG("\n\nNew Dimmer val: %d\n\n", dimmer);
+
+	return ret;
+}
+
 
 static int device_reboot_cb(u16_t obj_inst_id)
 {
@@ -252,8 +271,7 @@ static int lwm2m_setup(void)
 	/* IPSO: Light Control object */
 	lwm2m_engine_create_obj_inst("3311/0");
 	lwm2m_engine_register_post_write_callback("3311/0/5850", led_on_off_cb);
-
-
+	lwm2m_engine_register_post_write_callback("3311/0/5851", set_dimmer_cb);
 	return 0;
 }
 
@@ -379,14 +397,14 @@ void main(void)
 			led_on_time = 0;
 		}
 
-		lwm2m_engine_set_float32("3303/0/5700", &temp_value);
-		lwm2m_engine_set_s32("3311/0/5852", led_on_time);
-		cumulative.val1 = cumulative_power;
-		cumulative.val2 = 50000;
-		lwm2m_engine_set_float32("3311/0/5805", &cumulative);
+		// lwm2m_engine_set_float32("3303/0/5700", &temp_value);
+		// lwm2m_engine_set_s32("3311/0/5852", led_on_time);
+		// cumulative.val1 = cumulative_power;
+		// cumulative.val2 = 50000;
+		// lwm2m_engine_set_float32("3311/0/5805", &cumulative);
 
 
-		k_sleep(1000);
+		k_sleep(5000);
 	}
 
 

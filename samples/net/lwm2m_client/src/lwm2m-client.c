@@ -263,10 +263,12 @@ static int lwm2m_setup(void)
 	/* setup TEMP SENSOR object */
 
 	lwm2m_engine_create_obj_inst("3303/0");
+	lwm2m_engine_create_obj_inst("3303/1");
 	/* dummy temp data in C*/
 	float_value.val1 = 25;
 	float_value.val2 = 0;
 	lwm2m_engine_set_float32("3303/0/5700", &float_value);
+	lwm2m_engine_set_float32("3303/1/5700", &float_value);
 
 	/* IPSO: Light Control object */
 	lwm2m_engine_create_obj_inst("3311/0");
@@ -378,10 +380,6 @@ void main(void)
 		struct float32_value temp_value;
 		struct float32_value cumulative;
 		if(led_state){
-			// Set temperature
-			temp_value.val1 = 30;
-			temp_value.val2 = 0;
-			
 			//	update on time
 			led_on_time++;
 
@@ -391,20 +389,28 @@ void main(void)
 			cumulative_power += elapsed_power;
 		}
 		else {
-			temp_value.val1 = 25;
-			temp_value.val2 = 0;
 			cumulative_power = 0;
 			led_on_time = 0;
 		}
 
-		// lwm2m_engine_set_float32("3303/0/5700", &temp_value);
-		// lwm2m_engine_set_s32("3311/0/5852", led_on_time);
-		// cumulative.val1 = cumulative_power;
-		// cumulative.val2 = 50000;
-		// lwm2m_engine_set_float32("3311/0/5805", &cumulative);
+
+		//////////////////////// Temp Sensor ///////////////////////////
+		temp_value.val1 = 25 +led_state*2*(led_on_time%5);
+		temp_value.val2 = 0;
+		lwm2m_engine_set_float32("3303/0/5700", &temp_value);
+
+		temp_value.val1 = 25 +led_state*2*((led_on_time+3)%5);
+		temp_value.val2 = 0;
+		lwm2m_engine_set_float32("3303/1/5700", &temp_value);
+
+		///////////////////////// IPSO Light ////////////////////////////
+		cumulative.val1 = cumulative_power;
+		cumulative.val2 = 50000;
+		lwm2m_engine_set_float32("3311/0/5805", &cumulative);
+		lwm2m_engine_set_s32("3311/0/5852", led_on_time);
 
 
-		k_sleep(5000);
+		k_sleep(2000);
 	}
 
 
